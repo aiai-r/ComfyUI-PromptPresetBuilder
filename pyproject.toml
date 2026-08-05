@@ -1,0 +1,20 @@
+[project]
+# Registry node ID: lowercase, and permanent once published - change it before
+# the first publish if you want a different one.
+name = "comfyui-promptpresetbuilder"
+description = "Split a prompt into named elements and save the whole set as a preset. Weighted random syntax, labelled presets, tag autocomplete."
+version = "0.1.0"
+license = { file = "LICENSE" }
+readme = "README.md"
+requires-python = ">=3.9"
+# nothing beyond what ComfyUI already ships (aiohttp comes with the server)
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/aiai-r/ComfyUI-PromptPresetBuilder"
+
+[tool.comfy]
+# fill in before publishing: your Comfy Registry publisher id (without the "@")
+PublisherId = ""
+DisplayName = "Prompt Preset Builder"
+Icon = ""
