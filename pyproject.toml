@@ -14,7 +14,7 @@ dependencies = []
 Repository = "https://github.com/aiai-r/ComfyUI-PromptPresetBuilder"
 
 [tool.comfy]
-# fill in before publishing: your Comfy Registry publisher id (without the "@")
-PublisherId = ""
+# Comfy Registry publisher id (separate from the GitHub account)
+PublisherId = "aiaicreate"
 DisplayName = "Prompt Preset Builder"
 Icon = ""
