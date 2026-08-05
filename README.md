@@ -1,105 +1,122 @@
 # ComfyUI-PromptPresetBuilder
 
-プロンプトを「要素」単位に分けて入力し、その一式を名前付きプリセットとして保存・切替できるノードです。
+*[日本語版はこちら / Japanese version](README.ja.md)*
 
-## ノード
+A ComfyUI node that splits a prompt into named **elements** and stores the whole
+set as a named **preset** you can switch between.
 
-**Prompt Preset Builder** (`utils/prompt` カテゴリ)
+## The node
 
-- `+ Add element` で「ラベル」＋「プロンプト」の入力欄が1組増えます。ラベルは自由入力です。
-- 1要素＝1行で表示し、**クリックした要素だけプロンプト欄が縦に広がります**。
-- プロンプト欄は右下をドラッグして任意の高さにできます。**手で広げた高さは記憶され**、
-  フォーカスが外れても戻りません（元の1行に戻したいときは、そのまま下端までドラッグして縮めます）。
-- 要素が増えても**ノードは一定の高さ（8要素分）で止まり、以降はノード内スクロール**になります。
-  下の方の要素はスクロールして編集してください
-  （`web/prompt_preset_builder.js` の `PPB_MAX_ROWS` で変更できます）。
-- ノードを横に広げると、プロンプト欄もそれに追従して広がります。
-- あまり触らない `separator` / `seed` / `control_after_generate` は UI の下に表示されます
-  （`getLayoutWidgets()` で表示順だけ差し替えており、保存される値の順序は変えていません）。
-- 各要素はチェックボックスで個別に有効/無効を切り替えられます。
-- 各要素の `↑` `↓` で並べ替えできます。出力は要素の並び順どおりに連結されるので、
-  途中に要素を足したいときは末尾に追加してから上へ動かしてください。
-- プリセットは**ラベルで分類**します（例: `portrait` / `landscape`）。上段でラベル → プリセットの順に選ぶと、
-  **選んだ時点で読み込まれます**（Load ボタンはありません）。
-- `New` は要素を空の1行だけに戻し、プリセット選択も外します。この状態で `Save` を押すと保存先を聞かれます。
-- `Save` は選択中のプリセットへ**そのまま上書き**します（未選択のときだけ保存先を聞きます）。
-  別名で残したいときは `Save as` を使ってください。保存先が既にある場合のみ上書き確認が出ます。
-- 要素の内容が読み込んだプリセットと違うと、プリセット名の右に `*` が出ます。
-  `*` が出ている状態でプリセットを切り替えたり `New` を押したときだけ、破棄の確認が出ます。
-- **ラベルが違えば同名のプリセットは別物**です（`portrait/basic` と `landscape/basic` は独立しています）。
-  同じ内容を別ラベルにも置きたい場合は、一度読み込んでから `Save as` で別ラベルを指定してください。
-- 選択中のラベルとプリセット名はノードに記憶され、ワークフローを開き直しても復元されます。
-- `⚙` でプリセット管理のモーダルが開きます。一覧を見ながら**改名・別ラベルへの移動・削除・
-  ラベル自体の改名**ができ、変更はその場で保存されます。移動先や改名先に同名がある場合は
-  上書き確認が出ます。ラベル改名で既存ラベルを指定すると統合になります（衝突時は確認あり）。
-  空になったラベルは自動的に消えます。
-- 出力は有効な要素のプロンプトを `separator`（既定 `", "`）で連結した STRING 1本です。
-  中身が空になった要素は自動的に飛ばされるので、区切り文字だけが残ることはありません。
-- 実行後、ノード下部に実際に生成された文字列が表示されます。
+**Prompt Preset Builder** (category `utils/prompt`)
 
-## タグ予測入力（autocomplete 系拡張との連携）
+- `+ Add element` adds one more pair of *label* + *prompt* fields. Labels are free text.
+- One element is one row. **Only the row you click expands**, so the node stays compact.
+- Drag the bottom-right corner of a prompt box to any height. **A height you set by
+  hand is remembered** and survives losing focus (drag it back down to the bottom to
+  return to a single line).
+- Past 8 elements the **node stops growing and the list scrolls inside it**
+  (`PPB_MAX_ROWS` in `web/prompt_preset_builder.js`).
+- Widening the node widens the prompt boxes with it.
+- `separator` / `seed` / `control_after_generate` are shown below the UI, since you
+  rarely touch them. Only the display order is changed (`getLayoutWidgets()`); the
+  order of the serialized values is untouched, so older workflows still load.
+- Each element has a checkbox to include or exclude it.
+- `↑` `↓` reorder elements. The output is joined in element order, so to insert
+  something in the middle, add it at the end and move it up.
+- Presets are **grouped by label** (e.g. `portrait` / `landscape`). Pick a label, then
+  a preset: **choosing it loads it right away** — there is no Load button.
+- `New` clears the elements back to a single empty row and deselects the preset.
+  Pressing `Save` from there asks where to store it.
+- `Save` **overwrites the selected preset silently**; it only asks for a destination
+  when no preset is selected. Use `Save as` to store the elements under another name.
+  You are asked to confirm only when the destination already exists.
+- When the elements differ from the preset they came from, a `*` appears next to the
+  preset name. Only while that `*` is showing do switching presets and `New` ask
+  before discarding.
+- **Presets under different labels are unrelated**, even with the same name
+  (`portrait/basic` and `landscape/basic` are two separate presets). To put the same
+  content under another label, load it and `Save as` into that label.
+- The selected label and preset are remembered in the node and restored with the
+  workflow.
+- `⚙` opens the preset manager: **rename, move to another label, delete, and rename
+  labels themselves**, all saved as you go. Moving or renaming onto an existing name
+  asks to overwrite; renaming a label onto an existing one merges into it (with a
+  confirmation listing the clashes). Labels that end up empty disappear.
+- The output is a single STRING: the prompts of the enabled elements joined with
+  `separator` (default `", "`). Elements that resolve to nothing are skipped, so you
+  never get a stray separator.
+- After a run, the string that was actually produced is shown at the bottom of the node.
 
-プロンプト欄は**フロントエンドの `ComfyWidgets.STRING` ファクトリに作らせています**。
-autocomplete 系の拡張はどれもこのファクトリを差し替えて、そこから生まれた textarea に
-自分を取り付ける作りなので、**公式の CLIP Text Encode と同じ扱いになります**。
-特定の拡張に合わせた作り込みはしていません。
+## Tag autocomplete
 
-実装は「ファクトリを呼ぶ → 生成された textarea だけ受け取る → ウィジェット本体は捨てる」です。
-`node.addDOMWidget` を一時的に差し替えることでウィジェットが `node.widgets` に積まれるのを防ぎ
-（欄は要素ごとに自前で並べるため）、生成直後に `onRemove()` を呼んでフロントエンド側の
-バインドを外しています。特にホイールイベントをキャンバスへ直接流す処理が付いており、
-そのままだと要素リストをスクロールできずグラフがズームしてしまうためです。
+The prompt boxes are built by the frontend's own **`ComfyWidgets.STRING` factory**.
+Autocomplete extensions all work by wrapping that factory and attaching themselves to
+the textareas it produces, so these boxes get the same treatment as the ones in
+**CLIP Text Encode**. Nothing here is written against one particular extension.
 
-ファクトリが使えなかった場合は素の textarea にフォールバックし、そのときだけ
-[ComfyUI-Autocomplete-Plus](https://github.com/newtextdoc1111/ComfyUI-Autocomplete-Plus) の
-`AutocompleteEventHandler` を直接繋ぎにいきます（無ければコンソールに1行出るだけです）。
+Mechanically: call the factory, keep the textarea it built, throw the widget away.
+`node.addDOMWidget` is swapped out for the duration of the call so the widget never
+lands in `node.widgets` (the boxes are laid out per element by this node), and the
+widget's `onRemove()` is called right away to detach the frontend's own bindings —
+in particular a wheel handler that pushes the event straight to the canvas, which
+would zoom the graph instead of scrolling the element list.
 
-## ランダム構文
+If the factory is unavailable, the node falls back to a plain textarea and — only
+then — hooks up [ComfyUI-Autocomplete-Plus](https://github.com/newtextdoc1111/ComfyUI-Autocomplete-Plus)'s
+`AutocompleteEventHandler` directly. Without it you just get one informational line
+in the console.
 
-`{ }` 内をランダムに1つ選びます。`seed` で結果が固定されます（`control_after_generate` 対応）。
+## Random syntax
+
+One option inside `{ }` is picked at random. `seed` makes the result reproducible
+(`control_after_generate` is supported).
 
 ```
 {|wavy hair|0.4::{|high|low|side} ponytail|0.3::{low|short} hair}
 ```
 
-- `|` 区切り、空の選択肢も可（上例では「何も出さない」が 1/2.7 の確率）
-- `重み::選択肢` で重み付け（省略時は 1.0）
-- 入れ子可
-- `\{` `\|` `\}` でエスケープ
-- `}` の閉じ忘れは文末で閉じたものとして扱います
+- `|` separates options, and empty options are allowed (above, "emit nothing" has a
+  1/2.7 chance)
+- `weight::option` weights an option (default `1.0`)
+- Groups nest
+- `\{` `\|` `\}` escape a literal character
+- A missing `}` is treated as closing at the end of the text
 
-ComfyUI 本体の `dynamicPrompts`（CLIPTextEncode 等）は `{a|b|c}` のみで重みに非対応のため、
-このノードは Python 側で独自に解決しています。
+ComfyUI's built-in `dynamicPrompts` (CLIPTextEncode and friends) only handles
+`{a|b|c}` with no weights, so this node resolves the syntax itself in Python.
 
-## データの保存先
+## Where the data lives
 
 ```
-<ComfyUI>/user/<ユーザー>/prompt_preset_builder/presets.json
+<ComfyUI>/user/<user>/prompt_preset_builder/presets.json
 ```
 
-保存先はリクエストごとに ComfyUI のユーザーマネージャで解決するので、`--multi-user` で
-起動したサーバーでは**プロファイルごとに別のプリセットファイル**になります。
-通常のシングルユーザー起動ではユーザーは常に `default` なので、パスは
-`user/default/prompt_preset_builder/presets.json` です。
+The path is resolved per request through ComfyUI's user manager, so a server started
+with `--multi-user` gives **every profile its own preset file**. On a normal
+single-user server the user is always `default`, i.e.
+`user/default/prompt_preset_builder/presets.json`.
 
 ```json
 { "portrait": { "basic": [ {"label": "hair", "text": "long hair", "enabled": true} ] },
   "landscape": { "basic": [ ... ] } }
 ```
 
-ワークフローに埋め込まれるのは各ノードの現在の要素一式（`preset_data`）で、
-プリセット本体は上記ファイルに全ワークフロー共通で保存されます。
+What gets embedded in a workflow is each node's current set of elements
+(`preset_data`). The presets themselves live in the file above and are shared by all
+workflows.
 
-ラベル導入前の形式（`{"プリセット名": [要素...]}`）は初回読み込み時に `Uncategorized` ラベルへ自動移行し、
-移行前のファイルを `presets.json.legacy` として残します。
+The pre-label format (`{"preset name": [elements...]}`) is migrated into the
+`Uncategorized` label on first read, keeping the original as `presets.json.legacy`.
 
-なお UI の表示は英語に統一しています（配布前提のため）。このドキュメントのみ日本語です。
+## Layout
 
-## 構成
-
-| ファイル | 役割 |
+| File | Role |
 |---|---|
-| `nodes.py` | ノード本体（要素の連結） |
-| `dynamic_prompt.py` | ランダム構文パーサ |
-| `presets.py` | プリセットの保存と HTTP API |
-| `web/prompt_preset_builder.js` | 動的な入力欄の UI |
+| `nodes.py` | the node itself (joins the elements) |
+| `dynamic_prompt.py` | random syntax parser |
+| `presets.py` | preset storage and HTTP API |
+| `web/prompt_preset_builder.js` | the dynamic element UI |
+
+## License
+
+MIT — see [LICENSE](LICENSE).
