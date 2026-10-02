@@ -1,5 +1,32 @@
 # ComfyUI-PromptPresetBuilder
 
+## Prompt Style Presets
+
+A separate node for plain positive/negative style pairs, under `utils/prompt`.
+The original **Prompt Preset Builder** remains available with its existing data.
+The two editable text boxes are stacked positive above negative, with separate
+`STRING` outputs.
+
+- **Save as** registers both text boxes under a new name.
+- **Load** replaces both text boxes with the selected preset for editing.
+- **Save** updates the selected preset, or asks for a name when none is selected.
+- **Delete** removes the preset while keeping the current text boxes.
+- **Apply** follows Forge/WebUI style rules on both prompts: substitute the current
+  text at `{prompt}`, or append the style with a comma when no placeholder exists.
+  Apply additional styles in sequence to combine them.
+- **Refresh** reloads styles saved by other nodes or workflows.
+
+Selecting a name alone does not change the text. Edits do not change the library
+until Save is clicked. Load asks before replacing an edited draft; Save as asks
+before overwriting a name, and Delete asks for confirmation.
+
+Styles are shared across workflows for the same ComfyUI user, in
+`user/<user>/prompt_preset_builder/styles.json`, with the previous version kept
+as `styles.json.bak`. Existing Builder presets and Forge files are untouched.
+The selected name and current text boxes use normal workflow persistence.
+Outputs preserve the text verbatim; connect a wildcard processor or text encoder
+downstream if needed.
+
 *[日本語版はこちら / Japanese version](README.ja.md)*
 
 A ComfyUI node that splits a prompt into named **elements** and stores the whole

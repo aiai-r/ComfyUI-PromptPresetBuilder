@@ -4,6 +4,34 @@
 
 プロンプトを「要素」単位に分けて入力し、その一式を名前付きプリセットとして保存・切替できるノードです。
 
+## Prompt Style Presets
+
+項目分けをしない Positive / Negative のペア用ノードです。`utils/prompt` →
+**Prompt Style Presets** から追加できます。従来の **Prompt Preset Builder** もそのまま使えます。
+
+上段が `positive`、下段が `negative` の編集欄で、それぞれ独立した `STRING` 出力があります。
+
+- **Save as**：両方の本文を名前付きの新しいプリセットとして登録します。
+- **Load**：選んだプリセットを両方の入力欄に読み込みます。読み込み後は自由に編集できます。
+- **Save**：選択中のプリセットを現在の両方の本文で更新します。未選択なら名前を指定して登録します。
+- **Delete**：選択中のプリセットを削除します。入力欄の文章は残ります。
+- **Apply**：Forge / WebUI のStyleと同じ規則で現在の本文へ適用します。
+  プリセットに `{prompt}` があれば現在の本文をそこへ挿入し、なければカンマ区切りで末尾へ追加します。
+  Positive / Negative の両方に適用します。別のStyleを続けてApplyすれば順番に重ねられます。
+- **Refresh**：別ノードや別workflowで保存したプリセットを一覧へ反映します。
+
+プルダウンで選ぶだけでは本文は変わりません。登録名は `SDXL/basic`、`anima/basic` など自由です。
+編集はSaveを押すまでプリセットに反映されません。編集中の文章をLoadで置き換える場合と、
+Save asで同名に上書きする場合、削除する場合には確認が出ます。
+
+プリセットは `user/<ユーザー>/prompt_preset_builder/styles.json` に保存され、同じユーザーの
+全workflowで共用します。更新前の内容は `styles.json.bak` に残ります。
+既存Builderの `presets.json` やForge側のStyleファイルは変更しません。
+選択名と編集中の本文は通常のworkflowに保存されます。
+
+出力は入力欄の文字列そのままです。Wildcardの展開やCLIPエンコードはしないので、必要なら
+既存のWildcard / TIPO / CLIPノードにつないでください。
+
 ## ノード
 
 **Prompt Preset Builder** (`utils/prompt` カテゴリ)
