@@ -25,12 +25,14 @@ async function fixture() {
     const library = Object.create(null);
     library["SDXL/base"] = { positive: "quality, {prompt}", negative: "bad quality" };
     library["anima/base"] = { positive: "anima positive", negative: "anima negative" };
-    const dialogs = { names: [], accept: true };
+    const dialogs = { names: [], accept: true, confirmations: [] };
+    const writes = [];
     const api = {
         async fetchApi(path, options) {
             let data;
             let status = 200;
             const body = options.body ? JSON.parse(options.body) : null;
+            if (body) writes.push({ path, body });
             if (path.endsWith("/styles")) data = { styles: structuredClone(library) };
             else if (path.endsWith("/style/delete")) {
                 delete library[body.name];
@@ -49,7 +51,10 @@ async function fixture() {
         app: { registerExtension(value) { extension = value; } }, api,
         document: { createElement() { return new Element(); } },
         Option: class { constructor(text, value) { this.text = text; this.value = value; } },
-        window: { prompt() { return dialogs.names.shift(); }, confirm() { return dialogs.accept; } },
+        window: {
+            prompt() { return dialogs.names.shift(); },
+            confirm(message) { dialogs.confirmations.push(message); return dialogs.accept; },
+        },
     });
     const serialize = () => {};
     const node = {
@@ -68,7 +73,7 @@ async function fixture() {
     await new Promise(setImmediate);
     const [select, buttons, status] = node.widgets[0].element.children;
     return {
-        node, extension, library, dialogs, positive, negative, select, status, serialize,
+        node, extension, library, dialogs, positive, negative, select, status, serialize, writes,
         choose(name) { select.value = name; select.events.change(); },
         async click(name) { await buttons.children.find((button) => button.textContent === name).events.click(); },
     };
@@ -109,6 +114,38 @@ test("Apply follows Forge template and append rules without changing the saved s
     await f.click("Apply");
     assert.equal(f.positive.value, "quality, a cat, anima positive");
     assert.equal(f.negative.value, "blur, bad quality, anima negative");
+});
+
+test("Save requires confirmation for the selected existing preset and cancellation sends no write", async () => {
+    const f = await fixture();
+    f.choose("SDXL/base");
+    const original = structuredClone(f.library["SDXL/base"]);
+    f.positive.value = "new positive";
+    f.negative.value = "new negative";
+    f.dialogs.accept = false;
+    await f.click("Save");
+    assert.equal(f.dialogs.confirmations.length, 1);
+    assert.match(f.dialogs.confirmations[0], /SDXL\/base/);
+    assert.match(f.dialogs.confirmations[0], /positive and negative/);
+    assert.equal(f.writes.length, 0);
+    assert.deepEqual(f.library["SDXL/base"], original);
+    assert.equal(f.positive.value, "new positive");
+    assert.equal(f.negative.value, "new negative");
+    assert.equal(f.select.value, "SDXL/base");
+    f.dialogs.accept = true;
+    await f.click("Save");
+    assert.equal(f.dialogs.confirmations.length, 2);
+    assert.equal(f.writes.length, 1);
+    assert.deepEqual(f.library["SDXL/base"], { positive: "new positive", negative: "new negative" });
+});
+
+test("saving a new name does not ask to overwrite", async () => {
+    const f = await fixture();
+    f.dialogs.names.push("SDXL/new");
+    await f.click("Save");
+    assert.equal(f.dialogs.confirmations.length, 0);
+    assert.equal(f.writes.length, 1);
+    assert.equal(f.writes[0].body.overwrite, false);
 });
 
 test("cancelled replacement, overwrite and deletion keep text and library", async () => {

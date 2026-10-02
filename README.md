@@ -17,8 +17,10 @@ The two editable text boxes are stacked positive above negative, with separate
 - **Refresh** reloads styles saved by other nodes or workflows.
 
 Selecting a name alone does not change the text. Edits do not change the library
-until Save is clicked. Load asks before replacing an edited draft; Save as asks
-before overwriting a name, and Delete asks for confirmation.
+until Save is clicked. Both Save and Save as ask before overwriting any existing
+name, identifying the preset and the replacement of both prompts. Cancelling
+keeps the text boxes unchanged. Load asks before replacing an edited draft,
+and Delete asks for confirmation.
 
 Styles are shared across workflows for the same ComfyUI user, in
 `user/<user>/prompt_preset_builder/styles.json`, with the previous version kept

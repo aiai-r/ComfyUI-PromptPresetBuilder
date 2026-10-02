@@ -107,8 +107,7 @@ function setupStylePresets(node) {
         const prompts = readPrompts();
         await refresh();
         const exists = Object.hasOwn(library, name);
-        if (exists && (asNew || name !== current)
-            && !window.confirm(`Overwrite style "${name}"?`)) return;
+        if (exists && !window.confirm(`Overwrite style "${name}"?\nBoth positive and negative prompts will be replaced.`)) return;
         await request("style", { name, ...prompts, overwrite: exists });
         node.properties.promptStyleName = name;
         baseline = JSON.stringify(prompts);
