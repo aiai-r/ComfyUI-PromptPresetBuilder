@@ -12,9 +12,11 @@ picks the folder, the second row the preset; the same name in different folders
 is a separate preset.
 
 - **+ New folder...** at the end of the folder list creates a folder.
+- **Rename** next to the folder renames it; its presets stay in it. A name that
+  is already used is refused.
 - **Delete** next to the folder deletes it together with its presets (the
   confirmation shows how many). `Uncategorized` is always listed and cannot be
-  deleted. Folders stay in the list even when they have no presets.
+  renamed or deleted. Folders stay in the list even when they have no presets.
 - **Rename** next to the preset renames it.
 - **Delete** next to the preset removes that preset only, keeping its folder and
   the current text boxes.

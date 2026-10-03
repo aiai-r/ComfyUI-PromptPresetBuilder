@@ -331,7 +331,9 @@ function setupStylePresets(node) {
     // the buttons next to the lists only work on something that exists
     function updateRowButtons() {
         const folder = currentFolder();
-        setEnabled(deleteFolderButton, !busy && folder !== DEFAULT_FOLDER && Object.hasOwn(library, folder));
+        const editableFolder = !busy && folder !== DEFAULT_FOLDER && Object.hasOwn(library, folder);
+        setEnabled(renameFolderButton, editableFolder);
+        setEnabled(deleteFolderButton, editableFolder);
         setEnabled(renameButton, !busy && hasSelectedStyle());
         setEnabled(deleteButton, !busy && hasSelectedStyle());
     }
@@ -460,6 +462,21 @@ function setupStylePresets(node) {
         markChanged();
     }
 
+    const renameFolderButton = makeActionButton("Rename", "Rename this folder; its styles stay in it", async () => {
+        await refresh();
+        const folder = currentFolder();
+        if (folder === DEFAULT_FOLDER || !Object.hasOwn(library, folder)) return;
+        const target = await showDialog({
+            title: "Rename folder", okLabel: "Rename", name: folder, nameLabel: "New name", showFolder: false, folder,
+            canOverwrite: false, exists: (_, name) => name !== folder && folderNames().includes(name),
+        });
+        if (!target || target.name === folder) return;
+        await request("style/folder/rename", { folder, to_folder: target.name });
+        choose(target.name, node.properties.promptStyleName || "");
+        await refresh();
+        status.textContent = `Renamed folder: ${folder} -> ${target.name}`;
+        markChanged();
+    });
     const deleteFolderButton = makeActionButton("Delete", "Delete this folder and the styles in it", async () => {
         await refresh();
         const folder = currentFolder();
@@ -503,7 +520,7 @@ function setupStylePresets(node) {
         status.textContent = `Deleted: ${folder} / ${name}. Current text is unchanged.`;
         markChanged();
     });
-    folderRow.append(folderSelect, deleteFolderButton);
+    folderRow.append(folderSelect, renameFolderButton, deleteFolderButton);
     presetRow.append(select, renameButton, deleteButton);
 
     addButton("Load", "Replace both text boxes with the saved style for editing", async () => {
