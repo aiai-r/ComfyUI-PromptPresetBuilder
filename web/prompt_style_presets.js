@@ -86,7 +86,7 @@ function openModal(title, resolve, onEnter) {
         event.stopPropagation();
         if (event.key === "Escape") close(null);
         // a focused button handles Enter itself
-        else if (event.key === "Enter" && event.target.tagName !== "BUTTON" && onEnter) {
+        else if (event.key === "Enter" && event.target.tagName !== "BUTTON") {
             event.preventDefault();
             onEnter();
         }
@@ -108,16 +108,16 @@ function makeButtonRow(...buttons) {
 }
 
 // A modal in place of window.prompt/confirm. With `name` given it asks for a name (and a
-// folder unless showFolder is false) and resolves {folder, name}; with `choices` it resolves
-// the clicked label; otherwise it is a confirmation resolving true.
+// folder unless showFolder is false) and resolves {folder, name}; otherwise it is a
+// confirmation resolving true.
 // Cancel, Escape or a click outside resolves null.
 function showDialog({
     title, message = "", okLabel = "OK", folder, name, folders = [], exists = () => false,
-    showFolder = true, nameLabel = "Name", canOverwrite = true, choices = [],
+    showFolder = true, nameLabel = "Name", canOverwrite = true,
 }) {
     const form = name !== undefined;
     return new Promise((resolve) => {
-        const modal = openModal(title, resolve, choices.length ? null : () => submit());
+        const modal = openModal(title, resolve, () => submit());
         const { box } = modal;
         if (message) {
             const text = document.createElement("div");
@@ -143,9 +143,7 @@ function showDialog({
 
         const warning = makeWarning();
         const ok = makeButton(okLabel, () => submit());
-        const buttons = makeButtonRow(makeButton("Cancel", () => modal.close(null)));
-        for (const label of choices) buttons.append(makeButton(label, () => modal.close(label)));
-        if (!choices.length) buttons.append(ok);
+        const buttons = makeButtonRow(makeButton("Cancel", () => modal.close(null)), ok);
         box.append(warning, buttons);
 
         function readForm() {
