@@ -122,7 +122,7 @@ async def delete_style(request):
 
 
 async def move_style(request):
-    """Rename a style, move it to another folder, or both."""
+    """Rename a style, move it to another folder, or both; with "copy" the original stays."""
     body = await request.json()
     folder, name = body.get("folder"), body.get("name")
     to_folder, to_name = read_key(body, "to_folder"), read_key(body, "to_name")
@@ -136,7 +136,8 @@ async def move_style(request):
         return web.json_response({"folder": to_folder, "name": to_name})
     if to_name in styles.get(to_folder, {}) and body.get("overwrite") is not True:
         return web.json_response({"error": "A style with this name already exists"}, status=409)
-    styles.setdefault(to_folder, {})[to_name] = styles[folder].pop(name)
+    style = styles[folder][name] if body.get("copy") is True else styles[folder].pop(name)
+    styles.setdefault(to_folder, {})[to_name] = dict(style)
     save_styles(path, styles)
     return web.json_response({"folder": to_folder, "name": to_name})
 

@@ -7,17 +7,57 @@ const source = readFileSync(new URL("../web/prompt_style_presets.js", import.met
     .replace(/^import .*;\r?\n/gm, "");
 
 class Element {
-    constructor() {
+    constructor(tagName) {
+        this.tagName = tagName;
         this.children = [];
         this.events = {};
         this.style = {};
         this.value = "";
+        this.textContent = "";
     }
     append(...children) { this.children.push(...children); }
     add(child) { this.append(child); }
     replaceChildren(...children) { this.children = children; }
     setAttribute() {}
     addEventListener(name, callback) { this.events[name] = callback; }
+    remove() {}
+    focus() {}
+    select() {}
+}
+
+function descendants(element) {
+    return [element, ...element.children.filter((child) => child instanceof Element).flatMap(descendants)];
+}
+
+// Answers each modal as it opens: a form takes the next entry of dialogs.names
+// ("name" or {folder, name}; none cancels), a confirmation follows dialogs.accept.
+// Both the overwrite warning of a form and a confirmation message land in dialogs.confirmations.
+function answerDialog(overlay, dialogs) {
+    const elements = descendants(overlay);
+    const [cancel, ok] = elements.filter((element) => element.tagName === "button");
+    const [newFolder, nameInput] = elements.filter((element) => element.tagName === "input");
+    if (!nameInput) {
+        dialogs.confirmations.push(elements.map((element) => element.textContent).join("\n"));
+        return (dialogs.accept ? ok : cancel).events.click();
+    }
+    const entry = dialogs.names.shift();
+    if (entry === undefined) return cancel.events.click();
+    const { folder, name } = typeof entry === "string" ? { name: entry } : entry;
+    if (folder !== undefined) {
+        const folderSelect = elements.find((element) => element.tagName === "select");
+        const known = folderSelect.children.some((option) => option.value === folder);
+        folderSelect.value = known ? folder : "";
+        newFolder.value = known ? "" : folder;
+        folderSelect.events.change();
+        newFolder.events.input();
+    }
+    nameInput.value = name;
+    nameInput.events.input();
+    if (ok.textContent === "Overwrite") {
+        dialogs.confirmations.push(elements.map((element) => element.textContent).join("\n"));
+        if (!dialogs.accept) return cancel.events.click();
+    }
+    ok.events.click();
 }
 
 async function fixture() {
@@ -50,12 +90,11 @@ async function fixture() {
     };
     vm.runInNewContext(source, {
         app: { registerExtension(value) { extension = value; } }, api,
-        document: { createElement() { return new Element(); } },
-        Option: class { constructor(text, value) { this.text = text; this.value = value; } },
-        window: {
-            prompt() { return dialogs.names.shift(); },
-            confirm(message) { dialogs.confirmations.push(message); return dialogs.accept; },
+        document: {
+            createElement(tagName) { return new Element(tagName); },
+            body: { append(overlay) { queueMicrotask(() => answerDialog(overlay, dialogs)); } },
         },
+        Option: class { constructor(text, value) { this.text = text; this.value = value; } },
     });
     const serialize = () => {};
     const node = {
@@ -91,8 +130,7 @@ test("save, load, edit, save as and delete operate on pairs without clearing dra
     const f = await fixture();
     f.positive.value = "日本語\n{a|0.4::b}";
     f.negative.value = "negative\ntext";
-    f.choose("anima/");
-    f.dialogs.names.push("custom");
+    f.dialogs.names.push({ folder: "anima", name: "custom" });
     await f.click("Save as");
     assert.deepEqual(f.library.anima.custom, { positive: f.positive.value, negative: f.negative.value });
     f.choose("SDXL/base");

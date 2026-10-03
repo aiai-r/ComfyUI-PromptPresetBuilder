@@ -9,14 +9,17 @@ The two editable text boxes are stacked positive above negative, with separate
 
 Presets are kept in folders (e.g. one per model: `krea2`, `anima`). Pick a folder,
 then a preset; the same name in different folders is a separate preset.
-Choose **+ New folder...** in the folder list to start a new folder.
 
-- **Save as** registers both text boxes under a new name in the current folder.
+Save as, Move and Copy open a small dialog with a folder and a name. Pick an
+existing folder or **+ New folder...** to type a new one. When the destination
+already exists, the dialog says so and its button turns into **Overwrite**.
+Enter confirms, Esc cancels.
+
+- **Save as** registers both text boxes under the folder and name you choose.
 - **Load** replaces both text boxes with the selected preset for editing.
 - **Save** updates the selected preset, or asks for a name when none is selected.
-- **Rename** renames the selected preset.
-- **Move** moves the selected preset to another folder; typing a new folder name
-  creates it.
+- **Move** moves and/or renames the selected preset.
+- **Copy** copies the selected preset to a folder and name, keeping the original.
 - **Delete** removes the preset while keeping the current text boxes. A folder with
   no presets left disappears.
 - **Apply** follows Forge/WebUI style rules on both prompts: substitute the current
@@ -25,8 +28,8 @@ Choose **+ New folder...** in the folder list to start a new folder.
 - **Refresh** reloads styles saved by other nodes or workflows.
 
 Selecting a name alone does not change the text. Edits do not change the library
-until Save is clicked. Both Save and Save as ask before overwriting any existing
-name, identifying the preset and the replacement of both prompts. Cancelling
+until Save is clicked. Save asks before overwriting the selected preset, and the
+dialog of Save as, Move and Copy warns before overwriting another one. Cancelling
 keeps the text boxes unchanged. Load asks before replacing an edited draft,
 and Delete asks for confirmation.
 
