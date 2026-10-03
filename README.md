@@ -7,10 +7,18 @@ The original **Prompt Preset Builder** remains available with its existing data.
 The two editable text boxes are stacked positive above negative, with separate
 `STRING` outputs.
 
-- **Save as** registers both text boxes under a new name.
+Presets are kept in folders (e.g. one per model: `krea2`, `anima`). Pick a folder,
+then a preset; the same name in different folders is a separate preset.
+Choose **+ New folder...** in the folder list to start a new folder.
+
+- **Save as** registers both text boxes under a new name in the current folder.
 - **Load** replaces both text boxes with the selected preset for editing.
 - **Save** updates the selected preset, or asks for a name when none is selected.
-- **Delete** removes the preset while keeping the current text boxes.
+- **Rename** renames the selected preset.
+- **Move** moves the selected preset to another folder; typing a new folder name
+  creates it.
+- **Delete** removes the preset while keeping the current text boxes. A folder with
+  no presets left disappears.
 - **Apply** follows Forge/WebUI style rules on both prompts: substitute the current
   text at `{prompt}`, or append the style with a comma when no placeholder exists.
   Apply additional styles in sequence to combine them.
@@ -24,8 +32,10 @@ and Delete asks for confirmation.
 
 Styles are shared across workflows for the same ComfyUI user, in
 `user/<user>/prompt_preset_builder/styles.json`, with the previous version kept
-as `styles.json.bak`. Existing Builder presets and Forge files are untouched.
-The selected name and current text boxes use normal workflow persistence.
+as `styles.json.bak`. Styles saved before folders existed appear in the
+`Uncategorized` folder; the original file is kept as `styles.json.legacy`.
+Existing Builder presets and Forge files are untouched.
+The selected folder, name and current text boxes use normal workflow persistence.
 Outputs preserve the text verbatim; connect a wildcard processor or text encoder
 downstream if needed.
 

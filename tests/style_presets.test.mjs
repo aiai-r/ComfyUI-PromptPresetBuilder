@@ -23,8 +23,8 @@ class Element {
 async function fixture() {
     let extension;
     const library = Object.create(null);
-    library["SDXL/base"] = { positive: "quality, {prompt}", negative: "bad quality" };
-    library["anima/base"] = { positive: "anima positive", negative: "anima negative" };
+    library.SDXL = { base: { positive: "quality, {prompt}", negative: "bad quality" } };
+    library.anima = { base: { positive: "anima positive", negative: "anima negative" } };
     const dialogs = { names: [], accept: true, confirmations: [] };
     const writes = [];
     const api = {
@@ -35,14 +35,15 @@ async function fixture() {
             if (body) writes.push({ path, body });
             if (path.endsWith("/styles")) data = { styles: structuredClone(library) };
             else if (path.endsWith("/style/delete")) {
-                delete library[body.name];
+                delete library[body.folder][body.name];
                 data = { ok: true };
-            } else if (Object.hasOwn(library, body.name) && !body.overwrite) {
+            } else if (Object.hasOwn(library[body.folder] ?? {}, body.name) && !body.overwrite) {
                 status = 409;
                 data = { error: "exists" };
             } else {
-                library[body.name] = { positive: body.positive, negative: body.negative };
-                data = { name: body.name };
+                library[body.folder] ??= {};
+                library[body.folder][body.name] = { positive: body.positive, negative: body.negative };
+                data = { folder: body.folder, name: body.name };
             }
             return { ok: status === 200, status, json: async () => data, text: async () => JSON.stringify(data) };
         },
@@ -71,10 +72,17 @@ async function fixture() {
     const [positive, negative] = node.widgets;
     extension.nodeCreated(node);
     await new Promise(setImmediate);
-    const [select, buttons, status] = node.widgets[0].element.children;
+    const [selectors, buttons, status] = node.widgets[0].element.children;
+    const [folderSelect, select] = selectors.children;
     return {
-        node, extension, library, dialogs, positive, negative, select, status, serialize, writes,
-        choose(name) { select.value = name; select.events.change(); },
+        node, extension, library, dialogs, positive, negative, folderSelect, select, status, serialize, writes,
+        choose(path) {
+            const [folder, name] = path.split("/");
+            folderSelect.value = folder;
+            folderSelect.events.change();
+            select.value = name;
+            select.events.change();
+        },
         async click(name) { await buttons.children.find((button) => button.textContent === name).events.click(); },
     };
 }
@@ -83,9 +91,10 @@ test("save, load, edit, save as and delete operate on pairs without clearing dra
     const f = await fixture();
     f.positive.value = "日本語\n{a|0.4::b}";
     f.negative.value = "negative\ntext";
-    f.dialogs.names.push("anima/custom");
+    f.choose("anima/");
+    f.dialogs.names.push("custom");
     await f.click("Save as");
-    assert.deepEqual(f.library["anima/custom"], { positive: f.positive.value, negative: f.negative.value });
+    assert.deepEqual(f.library.anima.custom, { positive: f.positive.value, negative: f.negative.value });
     f.choose("SDXL/base");
     await f.click("Load");
     assert.equal(f.positive.value, "quality, {prompt}");
@@ -93,9 +102,9 @@ test("save, load, edit, save as and delete operate on pairs without clearing dra
     f.positive.value = "edited positive";
     f.negative.value = "edited negative";
     await f.click("Save");
-    assert.deepEqual(f.library["SDXL/base"], { positive: "edited positive", negative: "edited negative" });
+    assert.deepEqual(f.library.SDXL.base, { positive: "edited positive", negative: "edited negative" });
     await f.click("Delete");
-    assert.equal(Object.hasOwn(f.library, "SDXL/base"), false);
+    assert.equal(Object.hasOwn(f.library.SDXL, "base"), false);
     assert.equal(f.positive.value, "edited positive");
     assert.equal(f.negative.value, "edited negative");
     assert.equal(f.node.properties.promptStyleName, "");
@@ -109,7 +118,7 @@ test("Apply follows Forge template and append rules without changing the saved s
     await f.click("Apply");
     assert.equal(f.positive.value, "quality, a cat");
     assert.equal(f.negative.value, "blur, bad quality");
-    assert.equal(f.library["SDXL/base"].positive, "quality, {prompt}");
+    assert.equal(f.library.SDXL.base.positive, "quality, {prompt}");
     f.choose("anima/base");
     await f.click("Apply");
     assert.equal(f.positive.value, "quality, a cat, anima positive");
@@ -119,29 +128,29 @@ test("Apply follows Forge template and append rules without changing the saved s
 test("Save requires confirmation for the selected existing preset and cancellation sends no write", async () => {
     const f = await fixture();
     f.choose("SDXL/base");
-    const original = structuredClone(f.library["SDXL/base"]);
+    const original = structuredClone(f.library.SDXL.base);
     f.positive.value = "new positive";
     f.negative.value = "new negative";
     f.dialogs.accept = false;
     await f.click("Save");
     assert.equal(f.dialogs.confirmations.length, 1);
-    assert.match(f.dialogs.confirmations[0], /SDXL\/base/);
+    assert.match(f.dialogs.confirmations[0], /SDXL \/ base/);
     assert.match(f.dialogs.confirmations[0], /positive and negative/);
     assert.equal(f.writes.length, 0);
-    assert.deepEqual(f.library["SDXL/base"], original);
+    assert.deepEqual(f.library.SDXL.base, original);
     assert.equal(f.positive.value, "new positive");
     assert.equal(f.negative.value, "new negative");
-    assert.equal(f.select.value, "SDXL/base");
+    assert.equal(f.select.value, "base");
     f.dialogs.accept = true;
     await f.click("Save");
     assert.equal(f.dialogs.confirmations.length, 2);
     assert.equal(f.writes.length, 1);
-    assert.deepEqual(f.library["SDXL/base"], { positive: "new positive", negative: "new negative" });
+    assert.deepEqual(f.library.SDXL.base, { positive: "new positive", negative: "new negative" });
 });
 
 test("saving a new name does not ask to overwrite", async () => {
     const f = await fixture();
-    f.dialogs.names.push("SDXL/new");
+    f.dialogs.names.push("new");
     await f.click("Save");
     assert.equal(f.dialogs.confirmations.length, 0);
     assert.equal(f.writes.length, 1);
@@ -157,19 +166,20 @@ test("cancelled replacement, overwrite and deletion keep text and library", asyn
     await f.click("Load");
     assert.equal(f.positive.value, "unsaved draft");
     assert.equal(f.negative.value, "unsaved negative");
-    f.dialogs.names.push("SDXL/base");
+    f.dialogs.names.push("base");
     await f.click("Save as");
     await f.click("Delete");
-    assert.equal(f.library["SDXL/base"].positive, "quality, {prompt}");
+    assert.equal(f.library.SDXL.base.positive, "quality, {prompt}");
 });
 
 test("restore keeps ordinary text widgets, selection, and existing serialization", async () => {
     const f = await fixture();
     f.positive.value = "restored local positive";
     f.negative.value = "restored local negative";
-    f.node.properties = { promptStyleName: "anima/base" };
+    f.node.properties = { promptStyleFolder: "anima", promptStyleName: "base" };
     f.node.onConfigure({});
-    assert.equal(f.select.value, "anima/base");
+    assert.equal(f.folderSelect.value, "anima");
+    assert.equal(f.select.value, "base");
     assert.equal(f.positive.value, "restored local positive");
     assert.equal(f.negative.value, "restored local negative");
     assert.deepEqual(f.node.widgets.filter((w) => w.serialize !== false).map((w) => w.name), ["positive", "negative"]);

@@ -52,25 +52,25 @@ class StylePresetsTests(unittest.IsolatedAsyncioTestCase):
         builder = path.with_name("presets.json")
         builder.write_text('{"existing": "do not touch"}', encoding="utf-8")
         pair = {"positive": "日本語\n{prompt}, {red|blue}\n", "negative": " low quality\n"}
-        result = await styles.put_style(Request(name="anima/base", **pair))
+        result = await styles.put_style(Request(folder="anima", name="base", **pair))
         self.assertEqual(result.status, 200)
-        self.assertEqual(styles.load_styles(path)["anima/base"], pair)
-        await styles.put_style(Request(name="SDXL/base", positive="SDXL", negative=""))
-        conflict = await styles.put_style(Request(name="anima/base", positive="edited", negative=""))
+        self.assertEqual(styles.load_styles(path)["anima"]["base"], pair)
+        await styles.put_style(Request(folder="SDXL", name="base", positive="SDXL", negative=""))
+        conflict = await styles.put_style(Request(folder="anima", name="base", positive="edited", negative=""))
         self.assertEqual(conflict.status, 409)
-        self.assertEqual(styles.load_styles(path)["anima/base"], pair)
-        await styles.put_style(Request(name="anima/base", positive="edited", negative="", overwrite=True))
-        self.assertEqual(json.loads(path.with_suffix(".json.bak").read_text(encoding="utf-8"))["anima/base"], pair)
-        await styles.delete_style(Request(name="anima/base"))
-        self.assertEqual(styles.load_styles(path), {"SDXL/base": {"positive": "SDXL", "negative": ""}})
+        self.assertEqual(styles.load_styles(path)["anima"]["base"], pair)
+        await styles.put_style(Request(folder="anima", name="base", positive="edited", negative="", overwrite=True))
+        self.assertEqual(json.loads(path.with_suffix(".json.bak").read_text(encoding="utf-8"))["anima"]["base"], pair)
+        await styles.delete_style(Request(folder="anima", name="base"))
+        self.assertEqual(styles.load_styles(path), {"SDXL": {"base": {"positive": "SDXL", "negative": ""}}})
         self.assertEqual(builder.read_text(encoding="utf-8"), '{"existing": "do not touch"}')
 
     async def test_profiles_are_isolated_and_names_are_not_paths(self):
-        await styles.put_style(Request(name="../../same", positive="first", negative=""))
-        await styles.put_style(Request(user="second", name="../../same", positive="second", negative=""))
+        await styles.put_style(Request(folder="..", name="../../same", positive="first", negative=""))
+        await styles.put_style(Request(user="second", folder="..", name="../../same", positive="second", negative=""))
         for user, text in (("default", "first"), ("second", "second")):
             response = await styles.list_styles(Request(user=user))
-            self.assertEqual(json.loads(response.text)["styles"]["../../same"]["positive"], text)
+            self.assertEqual(json.loads(response.text)["styles"][".."]["../../same"]["positive"], text)
         self.assertFalse((self.root / "same").exists())
         with self.assertRaises(KeyError):
             styles.styles_path(Request(user="unknown"))
@@ -79,13 +79,13 @@ class StylePresetsTests(unittest.IsolatedAsyncioTestCase):
         path = styles.styles_path(Request())
         path.write_text("broken json", encoding="utf-8")
         with self.assertRaises(web.HTTPConflict):
-            await styles.put_style(Request(name="new", positive="", negative=""))
+            await styles.put_style(Request(folder="f", name="new", positive="", negative=""))
         self.assertEqual(path.read_text(encoding="utf-8"), "broken json")
 
     async def test_bad_requests_do_not_write(self):
-        for body in ({"name": ""}, {"name": "style", "positive": 3, "negative": ""}):
+        for body in ({"name": ""}, {"folder": "f", "name": "style", "positive": 3, "negative": ""}):
             self.assertEqual((await styles.put_style(Request(**body))).status, 400)
-        self.assertEqual((await styles.delete_style(Request(name="missing"))).status, 404)
+        self.assertEqual((await styles.delete_style(Request(folder="f", name="missing"))).status, 404)
         self.assertFalse(styles.styles_path(Request()).exists())
 
     def test_random_syntax_is_resolved_with_the_seed(self):
