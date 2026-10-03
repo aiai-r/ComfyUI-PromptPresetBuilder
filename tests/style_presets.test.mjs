@@ -112,9 +112,9 @@ async function fixture() {
     extension.nodeCreated(node);
     await new Promise(setImmediate);
     const [selectors, buttons, status] = node.widgets[0].element.children;
-    const [folderSelect, select] = selectors.children;
+    const [folderSelect, folderButton, select] = selectors.children;
     return {
-        node, extension, library, dialogs, positive, negative, folderSelect, select, status, serialize, writes,
+        node, extension, library, dialogs, positive, negative, folderSelect, folderButton, select, status, serialize, writes,
         choose(path) {
             const [folder, name] = path.split("/");
             folderSelect.value = folder;

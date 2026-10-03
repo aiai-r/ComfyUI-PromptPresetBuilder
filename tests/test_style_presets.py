@@ -62,7 +62,7 @@ class StylePresetsTests(unittest.IsolatedAsyncioTestCase):
         await styles.put_style(Request(folder="anima", name="base", positive="edited", negative="", overwrite=True))
         self.assertEqual(json.loads(path.with_suffix(".json.bak").read_text(encoding="utf-8"))["anima"]["base"], pair)
         await styles.delete_style(Request(folder="anima", name="base"))
-        self.assertEqual(styles.load_styles(path), {"SDXL": {"base": {"positive": "SDXL", "negative": ""}}})
+        self.assertEqual(styles.load_styles(path), {"anima": {}, "SDXL": {"base": {"positive": "SDXL", "negative": ""}}})
         self.assertEqual(builder.read_text(encoding="utf-8"), '{"existing": "do not touch"}')
 
     async def test_profiles_are_isolated_and_names_are_not_paths(self):

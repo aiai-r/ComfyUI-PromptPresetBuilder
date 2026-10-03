@@ -12,10 +12,14 @@ function applyStyle(prompt, style) {
         : [prompt.trim(), style.trim()].filter(Boolean).join(", ");
 }
 
-// A modal in place of window.prompt/confirm. With `name` given it asks for a folder and a
-// name and resolves {folder, name}; otherwise it is a confirmation resolving true.
+// A modal in place of window.prompt/confirm. With `name` given it asks for a name (and a
+// folder unless showFolder is false) and resolves {folder, name}; with `choices` it resolves
+// the clicked label; otherwise it is a confirmation resolving true.
 // Cancel, Escape or a click outside resolves null.
-function showDialog({ title, message = "", okLabel = "OK", folder, name, folders = [], exists = () => false }) {
+function showDialog({
+    title, message = "", okLabel = "OK", folder, name, folders = [], exists = () => false,
+    showFolder = true, nameLabel = "Name", canOverwrite = true, choices = [],
+}) {
     const form = name !== undefined;
     return new Promise((resolve) => {
         const overlay = document.createElement("div");
@@ -47,7 +51,7 @@ function showDialog({ title, message = "", okLabel = "OK", folder, name, folders
             field.append(caption, ...controls);
             box.append(field);
         }
-        if (form) {
+        if (form && showFolder) {
             folderSelect = document.createElement("select");
             folderSelect.style.cssText = INPUT_STYLE;
             for (const option of [...new Set([...folders, folder])].sort()) folderSelect.add(new Option(option, option));
@@ -56,12 +60,14 @@ function showDialog({ title, message = "", okLabel = "OK", folder, name, folders
             newFolder = document.createElement("input");
             newFolder.placeholder = "New folder name";
             newFolder.style.cssText = INPUT_STYLE;
+            addField("Folder", folderSelect, newFolder);
+        }
+        if (form) {
             nameInput = document.createElement("input");
             nameInput.value = name;
-            nameInput.placeholder = "Style name";
+            nameInput.placeholder = nameLabel;
             nameInput.style.cssText = INPUT_STYLE;
-            addField("Folder", folderSelect, newFolder);
-            addField("Name", nameInput);
+            addField(nameLabel, nameInput);
         }
 
         const warning = document.createElement("div");
@@ -73,23 +79,34 @@ function showDialog({ title, message = "", okLabel = "OK", folder, name, folders
         const ok = document.createElement("button");
         ok.textContent = okLabel;
         cancel.style.cssText = ok.style.cssText = BUTTON_STYLE;
-        buttons.append(cancel, ok);
+        buttons.append(cancel);
+        for (const label of choices) {
+            const choice = document.createElement("button");
+            choice.textContent = label;
+            choice.style.cssText = BUTTON_STYLE;
+            choice.addEventListener("click", () => close(label));
+            buttons.append(choice);
+        }
+        if (!choices.length) buttons.append(ok);
         box.append(warning, buttons);
 
         const readForm = () => ({
-            folder: (folderSelect.value === NEW_FOLDER ? newFolder.value : folderSelect.value).trim(),
+            folder: !showFolder ? folder
+                : (folderSelect.value === NEW_FOLDER ? newFolder.value : folderSelect.value).trim(),
             name: nameInput.value.trim(),
         });
         function update() {
             if (!form) return;
-            newFolder.style.display = folderSelect.value === NEW_FOLDER ? "" : "none";
+            if (showFolder) newFolder.style.display = folderSelect.value === NEW_FOLDER ? "" : "none";
             const target = readForm();
             const clash = Boolean(target.folder && target.name && exists(target.folder, target.name));
-            ok.disabled = !target.folder || !target.name;
-            ok.textContent = clash ? "Overwrite" : okLabel;
-            warning.textContent = clash
-                ? `"${target.folder} / ${target.name}" already exists.\nIts positive and negative prompts will be replaced.`
-                : "";
+            ok.disabled = !target.folder || !target.name || (clash && !canOverwrite);
+            ok.style.opacity = ok.disabled ? "0.5" : "";
+            ok.style.cursor = ok.disabled ? "default" : "pointer";
+            ok.textContent = clash && canOverwrite ? "Overwrite" : okLabel;
+            warning.textContent = !clash ? ""
+                : !canOverwrite ? `"${target.name}" already exists.`
+                : `"${target.folder} / ${target.name}" already exists.\nIts positive and negative prompts will be replaced.`;
         }
         function close(result) {
             overlay.remove();
@@ -108,26 +125,27 @@ function showDialog({ title, message = "", okLabel = "OK", folder, name, folders
         box.addEventListener("keydown", (event) => {
             event.stopPropagation();
             if (event.key === "Escape") close(null);
-            else if (event.key === "Enter" && event.target !== cancel) {
+            // a focused button handles Enter itself
+            else if (event.key === "Enter" && event.target.tagName !== "BUTTON") {
                 event.preventDefault();
                 submit();
             }
         });
-        if (form) {
+        if (form && showFolder) {
             folderSelect.addEventListener("change", () => {
                 update();
                 if (folderSelect.value === NEW_FOLDER) newFolder.focus();
             });
             newFolder.addEventListener("input", update);
-            nameInput.addEventListener("input", update);
         }
+        if (form) nameInput.addEventListener("input", update);
         document.body.append(overlay);
         update();
         if (form) {
             nameInput.focus();
             nameInput.select();
         } else {
-            ok.focus();
+            buttons.children[buttons.children.length - 1].focus();
         }
     });
 }
@@ -153,7 +171,11 @@ function setupStylePresets(node) {
     const select = document.createElement("select");
     select.setAttribute("aria-label", "Style preset");
     select.style.cssText = "flex:3;min-width:0;min-height:28px;color:var(--input-text,#ddd);background:var(--comfy-input-bg,#222)";
-    selectors.append(folderSelect, select);
+    const folderButton = document.createElement("button");
+    folderButton.textContent = "Folder";
+    folderButton.title = "Create or delete a folder";
+    folderButton.style.cssText = BUTTON_STYLE;
+    selectors.append(folderSelect, folderButton, select);
     const status = document.createElement("div");
     status.setAttribute("role", "status");
     status.style.cssText = "min-height:16px;white-space:normal";
@@ -208,7 +230,7 @@ function setupStylePresets(node) {
     async function run(action) {
         if (busy) return;
         busy = true;
-        select.disabled = folderSelect.disabled = true;
+        select.disabled = folderSelect.disabled = folderButton.disabled = true;
         for (const button of controls.children) button.disabled = true;
         status.textContent = "";
         try {
@@ -217,7 +239,7 @@ function setupStylePresets(node) {
             status.textContent = error.message;
         } finally {
             busy = false;
-            select.disabled = folderSelect.disabled = false;
+            select.disabled = folderSelect.disabled = folderButton.disabled = false;
             for (const button of controls.children) button.disabled = false;
         }
     }
@@ -332,6 +354,39 @@ function setupStylePresets(node) {
         markChanged();
     });
     addButton("Refresh", "Reload styles saved by other nodes or workflows", refresh);
+    folderButton.addEventListener("click", () => run(async () => {
+        await refresh();
+        const folder = currentFolder();
+        const known = Object.hasOwn(library, folder);
+        const count = Object.keys(stylesIn(folder)).length;
+        const choice = await showDialog({
+            title: `Folder "${folder}"`,
+            message: known ? `${count} style${count === 1 ? "" : "s"} in this folder.` : "This folder is not saved yet.",
+            choices: known ? ["Delete folder", "New folder"] : ["New folder"],
+        });
+        if (choice === "New folder") {
+            const target = await showDialog({
+                title: "New folder", okLabel: "Create", name: "", nameLabel: "Folder name",
+                showFolder: false, folder, canOverwrite: false, exists: (_, name) => Object.hasOwn(library, name),
+            });
+            if (!target) return;
+            await request("style/folder", { folder: target.name });
+            choose(target.name, "");
+            await refresh();
+            status.textContent = `Created folder: ${target.name}`;
+            markChanged();
+        } else if (choice === "Delete folder") {
+            const message = count
+                ? `Delete folder "${folder}" and the ${count} style${count === 1 ? "" : "s"} in it?\nThis cannot be undone from here.`
+                : `Delete the empty folder "${folder}"?`;
+            if (!await showDialog({ title: "Delete folder", okLabel: "Delete", message })) return;
+            await request("style/folder/delete", { folder });
+            choose("", "");
+            await refresh();
+            status.textContent = `Deleted folder: ${folder}. Current text is unchanged.`;
+            markChanged();
+        }
+    }));
     folderSelect.addEventListener("change", () => {
         choose(folderSelect.value, "");
         fillOptions();

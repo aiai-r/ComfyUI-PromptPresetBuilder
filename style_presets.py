@@ -74,7 +74,6 @@ def load_styles(path):
 
 
 def save_styles(path, styles):
-    styles = {folder: items for folder, items in styles.items() if items}
     pending = path.with_suffix(".json.tmp")
     pending.write_text(json.dumps(styles, ensure_ascii=False, indent=2), encoding="utf-8")
     if path.exists():
@@ -142,9 +141,38 @@ async def move_style(request):
     return web.json_response({"folder": to_folder, "name": to_name})
 
 
+async def create_folder(request):
+    body = await request.json()
+    folder = read_key(body, "folder")
+    if not folder:
+        return web.json_response({"error": "A folder name is required"}, status=400)
+    path = styles_path(request)
+    styles = load_styles(path)
+    if folder in styles:
+        return web.json_response({"error": "A folder with this name already exists"}, status=409)
+    styles[folder] = {}
+    save_styles(path, styles)
+    return web.json_response({"folder": folder})
+
+
+async def delete_folder(request):
+    """Delete a folder together with the styles in it."""
+    body = await request.json()
+    folder = body.get("folder")
+    path = styles_path(request)
+    styles = load_styles(path)
+    if not isinstance(folder, str) or folder not in styles:
+        return web.json_response({"error": "Folder not found"}, status=404)
+    del styles[folder]
+    save_styles(path, styles)
+    return web.json_response({"ok": True})
+
+
 _server = getattr(PromptServer, "instance", None)
 if _server is not None:
     _server.routes.get("/prompt_preset_builder/styles")(list_styles)
     _server.routes.post("/prompt_preset_builder/style")(put_style)
     _server.routes.post("/prompt_preset_builder/style/delete")(delete_style)
     _server.routes.post("/prompt_preset_builder/style/move")(move_style)
+    _server.routes.post("/prompt_preset_builder/style/folder")(create_folder)
+    _server.routes.post("/prompt_preset_builder/style/folder/delete")(delete_folder)

@@ -9,6 +9,9 @@ The two editable text boxes are stacked positive above negative, with separate
 
 Presets are kept in folders (e.g. one per model: `krea2`, `anima`). Pick a folder,
 then a preset; the same name in different folders is a separate preset.
+The **Folder** button next to the folder list creates a folder in advance or
+deletes the current one together with its presets (the confirmation shows how
+many). Folders stay in the list even when they have no presets.
 
 Save as, Move and Copy open a small dialog with a folder and a name. Pick an
 existing folder or **+ New folder...** to type a new one. When the destination
@@ -20,8 +23,8 @@ Enter confirms, Esc cancels.
 - **Save** updates the selected preset, or asks for a name when none is selected.
 - **Move** moves and/or renames the selected preset.
 - **Copy** copies the selected preset to a folder and name, keeping the original.
-- **Delete** removes the preset while keeping the current text boxes. A folder with
-  no presets left disappears.
+- **Delete** removes the selected preset only, keeping its folder and the current
+  text boxes.
 - **Apply** follows Forge/WebUI style rules on both prompts: substitute the current
   text at `{prompt}`, or append the style with a comma when no placeholder exists.
   Apply additional styles in sequence to combine them.
