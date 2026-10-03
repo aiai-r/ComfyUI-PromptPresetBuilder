@@ -13,9 +13,11 @@ from aiohttp import web
 ROOT = Path(__file__).resolve().parents[1]
 server = types.ModuleType("server")
 server.PromptServer = types.SimpleNamespace(instance=None)
-spec = importlib.util.spec_from_file_location("style_presets", ROOT / "style_presets.py")
+package = types.ModuleType("ppb")
+package.__path__ = [str(ROOT)]
+spec = importlib.util.spec_from_file_location("ppb.style_presets", ROOT / "style_presets.py")
 styles = importlib.util.module_from_spec(spec)
-with patch.dict(sys.modules, {"server": server}):
+with patch.dict(sys.modules, {"server": server, "ppb": package}):
     spec.loader.exec_module(styles)
 
 
@@ -86,12 +88,15 @@ class StylePresetsTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await styles.delete_style(Request(name="missing"))).status, 404)
         self.assertFalse(styles.styles_path(Request()).exists())
 
-    def test_prompt_text_and_wildcards_pass_through_unchanged(self):
-        pair = (" {prompt}\n{a|0.4::b}, __wildcard__ ", "\nnegative\n")
-        self.assertEqual(styles.PromptStylePresets().get_prompts(*pair), pair)
+    def test_random_syntax_is_resolved_with_the_seed(self):
+        node = styles.PromptStylePresets()
+        positive, negative = node.get_prompts(" style\n{a|b}, __wildcard__ ", "{x|y}\n", 1)
+        self.assertIn(positive, (" style\na, __wildcard__ ", " style\nb, __wildcard__ "))
+        self.assertIn(negative, ("x\n", "y\n"))
+        self.assertEqual(node.get_prompts("{a|b|c|d}", "{a|b|c|d}", 7), node.get_prompts("{a|b|c|d}", "{a|b|c|d}", 7))
         inputs = styles.PromptStylePresets.INPUT_TYPES()["required"]
-        self.assertEqual(list(inputs), ["positive", "negative"])
-        self.assertTrue(all(field[1]["dynamicPrompts"] is False for field in inputs.values()))
+        self.assertEqual(list(inputs), ["positive", "negative", "seed"])
+        self.assertTrue(all(inputs[name][1]["dynamicPrompts"] is False for name in ("positive", "negative")))
 
 
 if __name__ == "__main__":

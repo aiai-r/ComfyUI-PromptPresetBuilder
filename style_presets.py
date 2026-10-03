@@ -1,10 +1,13 @@
 import json
 import os
+import random
 import shutil
 from pathlib import Path
 
 from aiohttp import web
 from server import PromptServer
+
+from .dynamic_prompt import resolve
 
 
 class PromptStylePresets:
@@ -13,16 +16,21 @@ class PromptStylePresets:
         return {"required": {
             "positive": ("STRING", {"default": "", "multiline": True, "dynamicPrompts": False}),
             "negative": ("STRING", {"default": "", "multiline": True, "dynamicPrompts": False}),
+            "seed": ("INT", {
+                "default": 0, "min": 0, "max": 0xffffffffffffffff,
+                "control_after_generate": True,
+            }),
         }}
 
     RETURN_TYPES = ("STRING", "STRING")
     RETURN_NAMES = ("positive", "negative")
     FUNCTION = "get_prompts"
     CATEGORY = "utils/prompt"
-    DESCRIPTION = "Save, load and edit positive/negative style pairs. Outputs the editable text unchanged."
+    DESCRIPTION = "Save, load and edit positive/negative style pairs. Resolves {a|b|0.4::c} syntax with the seed."
 
-    def get_prompts(self, positive, negative):
-        return positive, negative
+    def get_prompts(self, positive, negative, seed):
+        rng = random.Random(seed)
+        return resolve(positive, rng), resolve(negative, rng)
 
 
 def styles_path(request):
