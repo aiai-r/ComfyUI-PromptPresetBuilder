@@ -14,16 +14,18 @@ deletes the current one together with its presets (the confirmation shows how
 many). Folders stay in the list even when they have no presets.
 `Uncategorized` is always listed and cannot be deleted.
 
-Save as, Move and Copy open a small dialog with a folder and a name. Pick an
-existing folder or **+ New folder...** to type a new one. When the destination
-already exists, the dialog says so and its button turns into **Overwrite**.
-Enter confirms, Esc cancels.
+Save as opens a small dialog with a folder and a name. Pick an existing folder or
+**+ New folder...** to type a new one. When the destination already exists, the
+dialog says so and its button turns into **Overwrite**. Enter confirms, Esc cancels.
 
 - **Save as** registers both text boxes under the folder and name you choose.
 - **Load** replaces both text boxes with the selected preset for editing.
 - **Save** updates the selected preset, or asks for a name when none is selected.
-- **Move** moves and/or renames the selected preset.
-- **Copy** copies the selected preset to a folder and name, keeping the original.
+- **Move / Copy** opens a dialog: choose the source folder and preset (the
+  selected one is filled in), Move or Copy, and the destination folder. The name
+  is kept. If the destination already has that name, choose **Overwrite** or
+  **Keep both**, which saves it as `name_2` (`_3`, ...). Enter picks Keep both.
+- **Rename** renames the selected preset.
 - **Delete** removes the selected preset only, keeping its folder and the current
   text boxes.
 - **Apply** follows Forge/WebUI style rules on both prompts: substitute the current
@@ -33,7 +35,7 @@ Enter confirms, Esc cancels.
 
 Selecting a name alone does not change the text. Edits do not change the library
 until Save is clicked. Save asks before overwriting the selected preset, and the
-dialog of Save as, Move and Copy warns before overwriting another one. Cancelling
+Save as, Move / Copy and Rename dialogs warn before overwriting another one. Cancelling
 keeps the text boxes unchanged. Load asks before replacing an edited draft,
 and Delete asks for confirmation.
 
