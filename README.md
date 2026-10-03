@@ -7,12 +7,17 @@ The original **Prompt Preset Builder** remains available with its existing data.
 The two editable text boxes are stacked positive above negative, with separate
 `STRING` outputs.
 
-Presets are kept in folders (e.g. one per model: `krea2`, `anima`). Pick a folder,
-then a preset; the same name in different folders is a separate preset.
-The **Folder** button next to the folder list creates a folder in advance or
-deletes the current one together with its presets (the confirmation shows how
-many). Folders stay in the list even when they have no presets.
-`Uncategorized` is always listed and cannot be deleted.
+Presets are kept in folders (e.g. one per model: `krea2`, `anima`). The top row
+picks the folder, the second row the preset; the same name in different folders
+is a separate preset.
+
+- **+ New folder...** at the end of the folder list creates a folder.
+- **Delete** next to the folder deletes it together with its presets (the
+  confirmation shows how many). `Uncategorized` is always listed and cannot be
+  deleted. Folders stay in the list even when they have no presets.
+- **Rename** next to the preset renames it.
+- **Delete** next to the preset removes that preset only, keeping its folder and
+  the current text boxes.
 
 Save as opens a small dialog with a folder and a name. Pick an existing folder or
 **+ New folder...** to type a new one. When the destination already exists, the
@@ -25,9 +30,6 @@ dialog says so and its button turns into **Overwrite**. Enter confirms, Esc canc
   selected one is filled in), Move or Copy, and the destination folder. The name
   is kept. If the destination already has that name, choose **Overwrite** or
   **Keep both**, which saves it as `name_2` (`_3`, ...). Enter picks Keep both.
-- **Rename** renames the selected preset.
-- **Delete** removes the selected preset only, keeping its folder and the current
-  text boxes.
 - **Apply** follows Forge/WebUI style rules on both prompts: substitute the current
   text at `{prompt}`, or append the style with a comma when no placeholder exists.
   Apply additional styles in sequence to combine them.

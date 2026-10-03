@@ -289,23 +289,20 @@ function setupStylePresets(node) {
     panel.style.cssText = "display:flex;flex-direction:column;gap:6px;padding:6px;box-sizing:border-box;font:12px sans-serif;color:var(--input-text,#ddd)";
     const controls = document.createElement("div");
     controls.style.cssText = "display:flex;gap:5px;flex-wrap:wrap";
-    const selectors = document.createElement("div");
-    selectors.style.cssText = "display:flex;gap:5px";
+    const folderRow = document.createElement("div");
+    folderRow.style.cssText = "display:flex;gap:5px";
     const folderSelect = document.createElement("select");
     folderSelect.setAttribute("aria-label", "Style folder");
-    folderSelect.style.cssText = "flex:2;min-width:0;min-height:28px;color:var(--input-text,#ddd);background:var(--comfy-input-bg,#222)";
+    folderSelect.style.cssText = "flex:1;min-width:0;min-height:28px;color:var(--input-text,#ddd);background:var(--comfy-input-bg,#222)";
+    const presetRow = document.createElement("div");
+    presetRow.style.cssText = "display:flex;gap:5px";
     const select = document.createElement("select");
     select.setAttribute("aria-label", "Style preset");
-    select.style.cssText = "flex:3;min-width:0;min-height:28px;color:var(--input-text,#ddd);background:var(--comfy-input-bg,#222)";
-    const folderButton = document.createElement("button");
-    folderButton.textContent = "Folder";
-    folderButton.title = "Create or delete a folder";
-    folderButton.style.cssText = BUTTON_STYLE;
-    selectors.append(folderSelect, folderButton, select);
+    select.style.cssText = "flex:1;min-width:0;min-height:28px;color:var(--input-text,#ddd);background:var(--comfy-input-bg,#222)";
     const status = document.createElement("div");
     status.setAttribute("role", "status");
     status.style.cssText = "min-height:16px;white-space:normal";
-    panel.append(selectors, controls, status);
+    panel.append(folderRow, presetRow, controls, status);
 
     function markChanged() {
         node.setDirtyCanvas(true, true);
@@ -327,11 +324,23 @@ function setupStylePresets(node) {
         return Object.hasOwn(library, folder) ? library[folder] : {};
     }
 
+    function hasSelectedStyle() {
+        return Object.hasOwn(stylesIn(currentFolder()), select.value);
+    }
+
+    // the buttons next to the lists only work on something that exists
+    function updateRowButtons() {
+        const folder = currentFolder();
+        setEnabled(deleteFolderButton, !busy && folder !== DEFAULT_FOLDER && Object.hasOwn(library, folder));
+        setEnabled(renameButton, !busy && hasSelectedStyle());
+        setEnabled(deleteButton, !busy && hasSelectedStyle());
+    }
+
     function fillOptions() {
         const folder = currentFolder();
         const folders = folderNames();
         if (!folders.includes(folder)) folders.push(folder);
-        folderSelect.replaceChildren(...folders.map((name) => new Option(name, name)));
+        folderSelect.replaceChildren(...folders.map((name) => new Option(name, name)), new Option("+ New folder...", NEW_FOLDER));
         folderSelect.value = folder;
         const styles = stylesIn(folder);
         const selected = node.properties.promptStyleName || "";
@@ -341,6 +350,7 @@ function setupStylePresets(node) {
             select.add(new Option(`${selected} (not in library)`, selected));
         }
         select.value = selected;
+        updateRowButtons();
     }
 
     async function request(path, body) {
@@ -361,8 +371,9 @@ function setupStylePresets(node) {
     async function run(action) {
         if (busy) return;
         busy = true;
-        select.disabled = folderSelect.disabled = folderButton.disabled = true;
+        select.disabled = folderSelect.disabled = true;
         for (const button of controls.children) button.disabled = true;
+        updateRowButtons();
         status.textContent = "";
         try {
             await action();
@@ -370,18 +381,20 @@ function setupStylePresets(node) {
             status.textContent = error.message;
         } finally {
             busy = false;
-            select.disabled = folderSelect.disabled = folderButton.disabled = false;
+            select.disabled = folderSelect.disabled = false;
             for (const button of controls.children) button.disabled = false;
+            updateRowButtons();
         }
     }
 
-    function addButton(label, title, action) {
-        const button = document.createElement("button");
-        button.textContent = label;
+    function makeActionButton(label, title, action) {
+        const button = makeButton(label, () => run(action));
         button.title = title;
-        button.style.cssText = BUTTON_STYLE;
-        button.addEventListener("click", () => run(action));
-        controls.append(button);
+        return button;
+    }
+
+    function addButton(label, title, action) {
+        controls.append(makeActionButton(label, title, action));
     }
 
     function selectedStyle() {
@@ -430,6 +443,69 @@ function setupStylePresets(node) {
         markChanged();
     }
 
+    async function createFolder() {
+        const target = await showDialog({
+            title: "New folder", okLabel: "Create", name: "", nameLabel: "Folder name",
+            showFolder: false, folder: currentFolder(), canOverwrite: false,
+            exists: (_, name) => folderNames().includes(name),
+        });
+        if (!target) {
+            fillOptions();
+            return;
+        }
+        await request("style/folder", { folder: target.name });
+        choose(target.name, "");
+        await refresh();
+        status.textContent = `Created folder: ${target.name}`;
+        markChanged();
+    }
+
+    const deleteFolderButton = makeActionButton("Delete", "Delete this folder and the styles in it", async () => {
+        await refresh();
+        const folder = currentFolder();
+        if (folder === DEFAULT_FOLDER || !Object.hasOwn(library, folder)) return;
+        const count = Object.keys(stylesIn(folder)).length;
+        const message = count
+            ? `Delete folder "${folder}" and the ${count} style${count === 1 ? "" : "s"} in it?\nThis cannot be undone from here.`
+            : `Delete the empty folder "${folder}"?`;
+        if (!await showDialog({ title: "Delete folder", okLabel: "Delete", message })) return;
+        await request("style/folder/delete", { folder });
+        choose("", "");
+        await refresh();
+        status.textContent = `Deleted folder: ${folder}. Current text is unchanged.`;
+        markChanged();
+    });
+    const renameButton = makeActionButton("Rename", "Rename the selected style", async () => {
+        await refresh();
+        selectedStyle();
+        const folder = currentFolder();
+        const name = select.value;
+        const target = await showDialog({
+            title: "Rename style", okLabel: "Rename", name, nameLabel: "New name", showFolder: false, folder,
+            exists: (key, value) => value !== name && Object.hasOwn(stylesIn(key), value),
+        });
+        if (!target || target.name === name) return;
+        const overwrite = Object.hasOwn(stylesIn(folder), target.name);
+        await request("style/move", { folder, name, to_folder: folder, to_name: target.name, overwrite });
+        choose(folder, target.name);
+        await refresh();
+        status.textContent = `Renamed: ${folder} / ${name} -> ${target.name}`;
+        markChanged();
+    });
+    const deleteButton = makeActionButton("Delete", "Delete the selected style; keep the current text boxes", async () => {
+        selectedStyle();
+        const folder = currentFolder();
+        const name = select.value;
+        if (!await showDialog({ title: "Delete style", okLabel: "Delete", message: `Delete "${folder} / ${name}"?` })) return;
+        await request("style/delete", { folder, name });
+        node.properties.promptStyleName = "";
+        await refresh();
+        status.textContent = `Deleted: ${folder} / ${name}. Current text is unchanged.`;
+        markChanged();
+    });
+    folderRow.append(folderSelect, deleteFolderButton);
+    presetRow.append(select, renameButton, deleteButton);
+
     addButton("Load", "Replace both text boxes with the saved style for editing", async () => {
         const style = selectedStyle();
         if (JSON.stringify(readPrompts()) !== baseline && !await showDialog({
@@ -469,78 +545,19 @@ function setupStylePresets(node) {
         status.textContent = `${result.copy ? "Copied" : "Moved"}: ${result.folder} / ${result.name} -> ${result.toFolder} / ${result.toName}`;
         markChanged();
     });
-    addButton("Rename", "Rename the selected style", async () => {
-        await refresh();
-        selectedStyle();
-        const folder = currentFolder();
-        const name = select.value;
-        const target = await showDialog({
-            title: "Rename style", okLabel: "Rename", name, nameLabel: "New name", showFolder: false, folder,
-            exists: (key, value) => value !== name && Object.hasOwn(stylesIn(key), value),
-        });
-        if (!target || target.name === name) return;
-        const overwrite = Object.hasOwn(stylesIn(folder), target.name);
-        await request("style/move", { folder, name, to_folder: folder, to_name: target.name, overwrite });
-        choose(folder, target.name);
-        await refresh();
-        status.textContent = `Renamed: ${folder} / ${name} -> ${target.name}`;
-        markChanged();
-    });
-    addButton("Delete", "Delete the selected style; keep the current text boxes", async () => {
-        selectedStyle();
-        const folder = currentFolder();
-        const name = select.value;
-        if (!await showDialog({ title: "Delete style", okLabel: "Delete", message: `Delete "${folder} / ${name}"?` })) return;
-        await request("style/delete", { folder, name });
-        node.properties.promptStyleName = "";
-        await refresh();
-        status.textContent = `Deleted: ${folder} / ${name}. Current text is unchanged.`;
-        markChanged();
-    });
     addButton("Refresh", "Reload styles saved by other nodes or workflows", refresh);
-    folderButton.addEventListener("click", () => run(async () => {
-        await refresh();
-        const folder = currentFolder();
-        const known = folderNames().includes(folder);
-        const deletable = Object.hasOwn(library, folder) && folder !== DEFAULT_FOLDER;
-        const count = Object.keys(stylesIn(folder)).length;
-        const choice = await showDialog({
-            title: `Folder "${folder}"`,
-            message: (known ? `${count} style${count === 1 ? "" : "s"} in this folder.` : "This folder is not saved yet.")
-                + (folder === DEFAULT_FOLDER ? `
-${DEFAULT_FOLDER} cannot be deleted.` : ""),
-            choices: deletable ? ["Delete folder", "New folder"] : ["New folder"],
-        });
-        if (choice === "New folder") {
-            const target = await showDialog({
-                title: "New folder", okLabel: "Create", name: "", nameLabel: "Folder name",
-                showFolder: false, folder, canOverwrite: false, exists: (_, name) => folderNames().includes(name),
-            });
-            if (!target) return;
-            await request("style/folder", { folder: target.name });
-            choose(target.name, "");
-            await refresh();
-            status.textContent = `Created folder: ${target.name}`;
-            markChanged();
-        } else if (choice === "Delete folder") {
-            const message = count
-                ? `Delete folder "${folder}" and the ${count} style${count === 1 ? "" : "s"} in it?\nThis cannot be undone from here.`
-                : `Delete the empty folder "${folder}"?`;
-            if (!await showDialog({ title: "Delete folder", okLabel: "Delete", message })) return;
-            await request("style/folder/delete", { folder });
-            choose("", "");
-            await refresh();
-            status.textContent = `Deleted folder: ${folder}. Current text is unchanged.`;
-            markChanged();
-        }
-    }));
     folderSelect.addEventListener("change", () => {
+        if (folderSelect.value === NEW_FOLDER) {
+            run(createFolder);
+            return;
+        }
         choose(folderSelect.value, "");
         fillOptions();
         markChanged();
     });
     select.addEventListener("change", () => {
         node.properties.promptStyleName = select.value;
+        updateRowButtons();
         markChanged();
     });
 

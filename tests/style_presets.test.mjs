@@ -111,10 +111,11 @@ async function fixture() {
     const [positive, negative] = node.widgets;
     extension.nodeCreated(node);
     await new Promise(setImmediate);
-    const [selectors, buttons, status] = node.widgets[0].element.children;
-    const [folderSelect, folderButton, select] = selectors.children;
+    const [folderRow, presetRow, buttons, status] = node.widgets[0].element.children;
+    const [folderSelect, deleteFolderButton] = folderRow.children;
+    const [select, ...presetButtons] = presetRow.children;
     return {
-        node, extension, library, dialogs, positive, negative, folderSelect, folderButton, select, status, serialize, writes,
+        node, extension, library, dialogs, positive, negative, folderSelect, deleteFolderButton, select, status, serialize, writes,
         choose(path) {
             const [folder, name] = path.split("/");
             folderSelect.value = folder;
@@ -122,7 +123,9 @@ async function fixture() {
             select.value = name;
             select.events.change();
         },
-        async click(name) { await buttons.children.find((button) => button.textContent === name).events.click(); },
+        async click(name) {
+            await [...buttons.children, ...presetButtons].find((button) => button.textContent === name).events.click();
+        },
     };
 }
 
