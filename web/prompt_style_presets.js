@@ -8,9 +8,7 @@ const BUTTON_STYLE = "padding:4px 8px;cursor:pointer;color:var(--input-text,#ddd
 let dialogCount = 0;
 
 function applyStyle(prompt, style) {
-    return style.includes("{prompt}")
-        ? style.split("{prompt}").join(prompt)
-        : [prompt.trim(), style.trim()].filter(Boolean).join(", ");
+    return [prompt.trim(), style.trim()].filter(Boolean).join(", ");
 }
 
 function makeButton(label, onClick) {
@@ -533,7 +531,7 @@ function setupStylePresets(node) {
         baseline = JSON.stringify(readPrompts());
         status.textContent = "Loaded. Edit the text, then Save to update the preset.";
     });
-    addButton("Apply", "Apply to both prompts: insert at {prompt}, otherwise append", () => {
+    addButton("Apply", "Append the style to both prompts with a comma", () => {
         const style = selectedStyle();
         writePrompts({
             positive: applyStyle(positive.value, style.positive),

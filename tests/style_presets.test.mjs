@@ -151,18 +151,18 @@ test("save, load, edit, save as and delete operate on pairs without clearing dra
     assert.equal(f.node.properties.promptStyleName, "");
 });
 
-test("Apply follows Forge template and append rules without changing the saved style", async () => {
+test("Apply appends to both prompts without changing the saved style", async () => {
     const f = await fixture();
     f.positive.value = "a cat";
     f.negative.value = "blur";
     f.choose("SDXL/base");
     await f.click("Apply");
-    assert.equal(f.positive.value, "quality, a cat");
+    assert.equal(f.positive.value, "a cat, quality, {prompt}");
     assert.equal(f.negative.value, "blur, bad quality");
     assert.equal(f.library.SDXL.base.positive, "quality, {prompt}");
     f.choose("anima/base");
     await f.click("Apply");
-    assert.equal(f.positive.value, "quality, a cat, anima positive");
+    assert.equal(f.positive.value, "a cat, quality, {prompt}, anima positive");
     assert.equal(f.negative.value, "blur, bad quality, anima negative");
 });
 

@@ -32,9 +32,8 @@ dialog says so and its button turns into **Overwrite**. Enter confirms, Esc canc
   selected one is filled in), Move or Copy, and the destination folder. The name
   is kept. If the destination already has that name, choose **Overwrite** or
   **Keep both**, which saves it as `name_2` (`_3`, ...). Enter picks Keep both.
-- **Apply** follows Forge/WebUI style rules on both prompts: substitute the current
-  text at `{prompt}`, or append the style with a comma when no placeholder exists.
-  Apply additional styles in sequence to combine them.
+- **Apply** appends the selected preset to both prompts with a comma. Apply
+  additional styles in sequence to combine them.
 - **Refresh** reloads styles saved by other nodes or workflows.
 
 Selecting a name alone does not change the text. Edits do not change the library
