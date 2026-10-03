@@ -192,13 +192,18 @@ function setupStylePresets(node) {
         return Object.keys(library).sort()[0] ?? DEFAULT_FOLDER;
     }
 
+    // DEFAULT_FOLDER is always listed and cannot be deleted
+    function folderNames() {
+        return [...new Set([DEFAULT_FOLDER, ...Object.keys(library)])].sort();
+    }
+
     function stylesIn(folder) {
         return Object.hasOwn(library, folder) ? library[folder] : {};
     }
 
     function fillOptions() {
         const folder = currentFolder();
-        const folders = Object.keys(library).sort();
+        const folders = folderNames();
         if (!folders.includes(folder)) folders.push(folder);
         folderSelect.replaceChildren(...folders.map((name) => new Option(name, name)));
         folderSelect.value = folder;
@@ -282,7 +287,7 @@ function setupStylePresets(node) {
         if (asNew || !name) {
             const target = await showDialog({
                 title: asNew ? "Save as" : "Save", okLabel: "Save", folder, name,
-                folders: Object.keys(library), exists: (f, n) => Object.hasOwn(stylesIn(f), n),
+                folders: folderNames(), exists: (f, n) => Object.hasOwn(stylesIn(f), n),
             });
             if (!target) return;
             ({ folder, name } = target);
@@ -306,7 +311,7 @@ function setupStylePresets(node) {
         const name = select.value;
         const target = await showDialog({
             title: copy ? "Copy style" : "Move / rename style", okLabel: copy ? "Copy" : "Move", folder, name,
-            folders: Object.keys(library),
+            folders: folderNames(),
             exists: (f, n) => Object.hasOwn(stylesIn(f), n) && !(f === folder && n === name),
         });
         if (!target || (target.folder === folder && target.name === name)) return;
@@ -357,17 +362,20 @@ function setupStylePresets(node) {
     folderButton.addEventListener("click", () => run(async () => {
         await refresh();
         const folder = currentFolder();
-        const known = Object.hasOwn(library, folder);
+        const known = folderNames().includes(folder);
+        const deletable = Object.hasOwn(library, folder) && folder !== DEFAULT_FOLDER;
         const count = Object.keys(stylesIn(folder)).length;
         const choice = await showDialog({
             title: `Folder "${folder}"`,
-            message: known ? `${count} style${count === 1 ? "" : "s"} in this folder.` : "This folder is not saved yet.",
-            choices: known ? ["Delete folder", "New folder"] : ["New folder"],
+            message: (known ? `${count} style${count === 1 ? "" : "s"} in this folder.` : "This folder is not saved yet.")
+                + (folder === DEFAULT_FOLDER ? `
+${DEFAULT_FOLDER} cannot be deleted.` : ""),
+            choices: deletable ? ["Delete folder", "New folder"] : ["New folder"],
         });
         if (choice === "New folder") {
             const target = await showDialog({
                 title: "New folder", okLabel: "Create", name: "", nameLabel: "Folder name",
-                showFolder: false, folder, canOverwrite: false, exists: (_, name) => Object.hasOwn(library, name),
+                showFolder: false, folder, canOverwrite: false, exists: (_, name) => folderNames().includes(name),
             });
             if (!target) return;
             await request("style/folder", { folder: target.name });

@@ -161,6 +161,8 @@ async def delete_folder(request):
     folder = body.get("folder")
     path = styles_path(request)
     styles = load_styles(path)
+    if folder == DEFAULT_FOLDER:
+        return web.json_response({"error": f"{DEFAULT_FOLDER} cannot be deleted"}, status=400)
     if not isinstance(folder, str) or folder not in styles:
         return web.json_response({"error": "Folder not found"}, status=404)
     del styles[folder]

@@ -12,6 +12,7 @@ then a preset; the same name in different folders is a separate preset.
 The **Folder** button next to the folder list creates a folder in advance or
 deletes the current one together with its presets (the confirmation shows how
 many). Folders stay in the list even when they have no presets.
+`Uncategorized` is always listed and cannot be deleted.
 
 Save as, Move and Copy open a small dialog with a folder and a name. Pick an
 existing folder or **+ New folder...** to type a new one. When the destination
